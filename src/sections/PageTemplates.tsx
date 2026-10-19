@@ -8,23 +8,35 @@ import {
   LayoutDashboard,
   LayoutTemplate,
   LogIn,
+  Map,
   PanelLeft,
   Settings,
   User,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BrandLogo } from "../components/BrandLogo";
 import { CollapsibleSidebar } from "../components/CollapsibleSidebar";
 import { MiniPageBody, MiniPageHeader } from "../components/MiniPageHeader";
+import { CodeBlock } from "../components/CodeBlock";
 import { CopyInstallPath } from "../components/CopyInstallPath";
 import { PreviewFrame } from "../components/PreviewFrame";
 import { SectionToc } from "../components/SectionToc";
 import {
+  TemplatePreviewSizeProvider,
+  templateAuthMinHeight,
+  templateEmptyHeight,
+  templateMainHeight,
+  useTemplatePreviewSize,
+} from "../components/TemplatePreviewContext";
+import { TemplatePreviewModal } from "../components/TemplatePreviewModal";
+import {
   appShellSessionExample,
+  gisStackMeta,
   pageTemplateDetails,
   pageTemplateMeta,
   type PageTemplateId,
 } from "../data/designContent";
+import { GisMapTemplateDemo } from "./GisMapTemplateDemo";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 
@@ -39,6 +51,7 @@ const templateIcons: Record<PageTemplateId, typeof LayoutDashboard> = {
   auth: LogIn,
   settings: Settings,
   empty: Inbox,
+  gis: Map,
 };
 
 const shellNavItems = [
@@ -49,8 +62,9 @@ const shellNavItems = [
 ];
 
 function ShellDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 overflow-hidden text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 overflow-hidden text-sm`}>
       <CollapsibleSidebar
         brand="System Name"
         brandMonogram="SN"
@@ -82,8 +96,9 @@ function ShellDemo() {
 }
 
 function DashboardDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 flex-col text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 flex-col text-sm`}>
       <MiniPageHeader
         breadcrumbs={["Home", "Dashboard"]}
         title="Operations overview"
@@ -133,8 +148,9 @@ function DashboardDemo() {
 }
 
 function ListDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 flex-col text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 flex-col text-sm`}>
       <MiniPageHeader
         breadcrumbs={["Home", "Submissions"]}
         title="All submissions"
@@ -208,8 +224,9 @@ function ListDemo() {
 }
 
 function DetailDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 flex-col text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 flex-col text-sm`}>
       <MiniPageHeader
         breadcrumbs={["Home", "Submissions", "SUB-1042"]}
         title="Building permit application"
@@ -259,8 +276,9 @@ function DetailDemo() {
 }
 
 function FormDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 flex-col text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 flex-col text-sm`}>
       <MiniPageHeader
         breadcrumbs={["Home", "Submissions", "New"]}
         title="Create submission"
@@ -303,8 +321,9 @@ function FormDemo() {
 }
 
 function AuthDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="grid min-h-[360px] md:grid-cols-2">
+    <div className={`grid ${templateAuthMinHeight(size)} md:grid-cols-2`}>
       <div className="hidden bg-primary p-8 text-white md:flex md:flex-col md:justify-between">
         <BrandLogo className="size-11" letters="SN" title="System Name" />
         <div>
@@ -327,8 +346,9 @@ function AuthDemo() {
 }
 
 function SettingsDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[400px] min-h-0 overflow-hidden text-sm">
+    <div className={`flex ${templateMainHeight(size)} min-h-0 overflow-hidden text-sm`}>
       <CollapsibleSidebar
         brand="Settings"
         compact
@@ -364,8 +384,9 @@ function SettingsDemo() {
 }
 
 function EmptyDemo() {
+  const size = useTemplatePreviewSize();
   return (
-    <div className="flex h-[320px] flex-col items-center justify-center bg-[#fafafa] p-8 text-center text-sm">
+    <div className={`flex ${templateEmptyHeight(size)} flex-col items-center justify-center bg-[#fafafa] p-8 text-center text-sm`}>
       <div className="flex size-14 items-center justify-center rounded-2xl bg-primary-muted text-primary-subtle" aria-hidden>
         <Inbox className="size-7" strokeWidth={1.75} />
       </div>
@@ -388,14 +409,26 @@ const demos: Record<PageTemplateId, () => ReactNode> = {
   auth: AuthDemo,
   settings: SettingsDemo,
   empty: EmptyDemo,
+  gis: GisMapTemplateDemo,
 };
 
 export function PageTemplates() {
   const [active, setActive] = useState<PageTemplateId>("shell");
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const meta = pageTemplateMeta.find((p) => p.id === active) ?? pageTemplateMeta[0];
   const details = pageTemplateDetails[active];
   const Demo = demos[active];
   const ActiveIcon = templateIcons[active];
+
+  const templatePreview = (
+    <div key={active} className="motion-content-enter">
+      <Demo />
+    </div>
+  );
+
+  useEffect(() => {
+    setPreviewExpanded(false);
+  }, [active]);
 
   const tocItems = [
     { id: "pages-intro", label: "Introduction" },
@@ -460,19 +493,72 @@ export function PageTemplates() {
         </div>
 
         <div id="pages-preview" className="min-w-0 scroll-mt-24 space-y-6">
-          <PreviewFrame title={meta.label} description={meta.desc} route={details.route} height={460}>
-            <div key={active} className="motion-content-enter">
-              <Demo />
-            </div>
+          <PreviewFrame
+            title={meta.label}
+            description={meta.desc}
+            route={details.route}
+            height={active === "gis" ? 480 : 460}
+            onExpand={() => setPreviewExpanded(true)}
+          >
+            {previewExpanded && active === "gis" ? (
+              <p className="copy-body-tight px-6 py-16 text-center text-zinc-500">
+                The map is in the expanded preview dialog. Close the dialog to show it here again.
+              </p>
+            ) : previewExpanded ? (
+              <p className="copy-body-tight px-6 py-16 text-center text-zinc-500">
+                Preview is open in expanded view. Close the dialog to return here.
+              </p>
+            ) : (
+              <TemplatePreviewSizeProvider size="frame">{templatePreview}</TemplatePreviewSizeProvider>
+            )}
           </PreviewFrame>
+
+          <TemplatePreviewModal
+            open={previewExpanded}
+            onClose={() => setPreviewExpanded(false)}
+            title={meta.label}
+            description={meta.desc}
+            route={details.route}
+          >
+            <TemplatePreviewSizeProvider size="modal">{templatePreview}</TemplatePreviewSizeProvider>
+          </TemplatePreviewModal>
 
           <div id="pages-guidance" key={`${active}-meta`} className="motion-content-enter scroll-mt-24 space-y-4">
           <CopyInstallPath
             label={`${meta.label} route`}
-            portalPath={`portal/src/sections/PageTemplates.tsx (${active} demo)`}
+            portalPath={
+              active === "gis"
+                ? "portal/src/sections/GisMapTemplateDemo.tsx"
+                : `portal/src/sections/PageTemplates.tsx (${active} demo)`
+            }
             targetPath={details.route}
             initSetupHint="Place under app/ using the authenticated or public layout as noted below."
           />
+          {active === "gis" ? (
+            <div className="space-y-4 rounded-2xl border border-primary-border bg-primary-muted/25 p-4 sm:p-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recommended stack</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-900">
+                  <a href={gisStackMeta.docsUrl} className="text-primary hover:underline" target="_blank" rel="noreferrer">
+                    {gisStackMeta.name}
+                  </a>
+                </p>
+                <p className="copy-body mt-2">{gisStackMeta.summary}</p>
+                <p className="copy-body-tight mt-2">{gisStackMeta.backendNote}</p>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <CodeBlock title="Install (frontend)" code={gisStackMeta.installCommand} />
+                <CodeBlock title="Map component" code={gisStackMeta.usageExample} />
+              </div>
+              <ul className="space-y-2 text-sm text-zinc-700">
+                {gisStackMeta.alternatives.map((alt) => (
+                  <li key={alt.name}>
+                    <span className="font-medium text-zinc-900">{alt.name}</span> — {alt.when}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">

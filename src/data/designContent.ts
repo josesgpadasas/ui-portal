@@ -57,6 +57,14 @@ export const uiComponentCatalog = [
     blurb: "Mobile navigation sheet",
   },
   {
+    id: "gis-map",
+    name: "GIS map canvas",
+    portalPath: "portal/src/sections/GisMapCanvas.tsx",
+    targetPath: "frontend/src/features/gis/components/asset-map.tsx",
+    initSetupHint: "Wrap in a client-only boundary in Next.js; load mapStyle from env.",
+    blurb: "MapLibre GL map via react-map-gl",
+  },
+  {
     id: "shell",
     name: "App shell",
     portalPath: "portal/src/components/AppShell.tsx",
@@ -167,6 +175,10 @@ export const uxPatterns = [
     title: "Accessibility",
     body: "Visible focus rings, label every input, table headers scoped, dialog focus trap, color is never the only signal.",
   },
+  {
+    title: "GIS / mapping",
+    body: "Use MapLibre GL + react-map-gl; serve GeoJSON/vector tiles from NestJS/PostGIS; keep layer state in URL; always show attribution and accessible feature summaries off the map.",
+  },
 ];
 
 export const implementationChecklist = [
@@ -193,9 +205,39 @@ export const implementationChecklist = [
       "Implement list → detail navigation with shared breadcrumbs",
       "Add loading.tsx / error.tsx per route segment",
       "Run keyboard-only smoke test on forms and dialogs",
+      "Add GIS routes with MapLibre — verify tile URLs, CORS, and PII on popups",
     ],
   },
 ];
+
+/** Default web GIS stack for new frontends (vector maps, no vendor lock-in). */
+export const gisStackMeta = {
+  name: "MapLibre GL JS + react-map-gl",
+  docsUrl: "https://maplibre.org/maplibre-gl-js/docs/",
+  reactDocsUrl: "https://visgl.github.io/react-map-gl/",
+  summary:
+    "MapLibre is the open-source fork of Mapbox GL: GPU-accelerated vector maps, custom layers, and strong performance for agency dashboards. react-map-gl provides React bindings used across the vis.gl ecosystem. Use free demo tiles locally; in production point mapStyle at your tile server or MapTiler/Protomaps with an API key.",
+  installCommand: "cd frontend\nnpm install maplibre-gl react-map-gl",
+  usageExample: `import Map from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+
+export function AssetMap() {
+  return (
+    <Map
+      initialViewState={{ longitude: 120.98, latitude: 14.6, zoom: 11 }}
+      mapStyle={process.env.NEXT_PUBLIC_MAP_STYLE_URL!}
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
+}`,
+  backendNote:
+    "Store geometries in PostGIS; expose read-only GeoJSON or MVT endpoints from NestJS modules; never embed database credentials in the client.",
+  alternatives: [
+    { name: "Leaflet", when: "Simple raster basemaps, legacy plugins — prefer MapLibre for new vector-first UIs." },
+    { name: "OpenLayers", when: "Heavy OGC/WMS enterprise integrations — higher learning curve." },
+    { name: "Google Maps JS", when: "Only when contractually required; licensing and styling limits apply." },
+  ],
+} as const;
 
 export const pageTemplateMeta = [
   { id: "shell", label: "App shell", desc: "Sidebar, user session + sign out, top bar, content" },
@@ -206,6 +248,7 @@ export const pageTemplateMeta = [
   { id: "auth", label: "Sign in", desc: "OIDC redirect or credential form (edge)" },
   { id: "settings", label: "Settings", desc: "Section nav + preference forms" },
   { id: "empty", label: "Empty state", desc: "Zero-data onboarding panel" },
+  { id: "gis", label: "GIS map", desc: "Layer panel, vector map, feature inspector" },
 ] as const;
 
 export type PageTemplateId = (typeof pageTemplateMeta)[number]["id"];
@@ -260,6 +303,19 @@ export const pageTemplateDetails: Record<
     route: "(embedded in list or dashboard)",
     whenToUse: "Replace table body when count is zero — explain next step and offer one primary action.",
     buildingBlocks: ["Illustration or icon", "Short explanation", "Primary CTA", "Optional doc link"],
+    inAppShell: true,
+  },
+  gis: {
+    route: "app/(authenticated)/gis/map/page.tsx",
+    whenToUse:
+      "Spatial views of assets, permits, or incidents — pair the map with list/detail routes and the same record IDs.",
+    buildingBlocks: [
+      "MapLibre map canvas (react-map-gl)",
+      "Layer list + toggles",
+      "Feature popup / inspector card",
+      "Geosearch or bbox filters in URL",
+      "Attribution + scale / navigation controls",
+    ],
     inAppShell: true,
   },
 };
@@ -364,5 +420,9 @@ export const iconCatalog = [
   {
     category: "Search & filters",
     icons: ["Search", "Filter", "SlidersHorizontal", "ArrowUpDown", "Calendar"],
+  },
+  {
+    category: "GIS & location",
+    icons: ["Map", "MapPin", "Layers", "LocateFixed", "Compass", "Ruler"],
   },
 ];
